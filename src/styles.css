@@ -1,0 +1,166 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-bolt: var(--bolt);
+  --color-signal: var(--signal);
+  --color-paper: var(--paper);
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "Barlow", system-ui, sans-serif;
+  --shadow-cta: var(--shadow-cta);
+}
+
+:root {
+  --radius: 0.25rem;
+  /* Paleta tirada do logo: azul-marinho da fachada, raio vermelho, amarelo do balcão */
+  --navy: oklch(0.29 0.07 245);
+  --navy-deep: oklch(0.2 0.05 245);
+  --bolt: oklch(0.55 0.2 25);
+  --signal: oklch(0.91 0.19 103);
+  --paper: oklch(0.97 0.012 85);
+  --background: var(--paper);
+  --foreground: var(--navy-deep);
+  --card: oklch(0.99 0.008 85);
+  --card-foreground: var(--navy-deep);
+  --popover: var(--card);
+  --popover-foreground: var(--navy-deep);
+  --primary: var(--navy);
+  --primary-foreground: var(--paper);
+  --secondary: oklch(0.93 0.02 85);
+  --secondary-foreground: var(--navy-deep);
+  --muted: oklch(0.93 0.018 85);
+  --muted-foreground: oklch(0.42 0.04 245);
+  --accent: var(--signal);
+  --accent-foreground: var(--navy-deep);
+  --destructive: var(--bolt);
+  --destructive-foreground: var(--paper);
+  --border: oklch(0.86 0.025 85);
+  --input: oklch(0.86 0.025 85);
+  --ring: var(--navy);
+  --chart-1: var(--navy); --chart-2: var(--bolt); --chart-3: var(--signal); --chart-4: oklch(0.6 0.05 245); --chart-5: oklch(0.7 0.1 85);
+  --sidebar: var(--paper); --sidebar-foreground: var(--navy-deep); --sidebar-primary: var(--navy); --sidebar-primary-foreground: var(--paper); --sidebar-accent: var(--muted); --sidebar-accent-foreground: var(--navy-deep); --sidebar-border: var(--border); --sidebar-ring: var(--navy);
+  --shadow-cta: 0 14px 30px -12px color-mix(in oklab, var(--signal) 70%, transparent);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: var(--font-display); font-stretch: 112%; letter-spacing: -0.02em; }
+}
+
+@utility display-xl {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: 125%;
+  line-height: 0.88;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+@utility eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+@utility hazard {
+  background-image: repeating-linear-gradient(-45deg, var(--signal) 0 14px, var(--navy-deep) 14px 28px);
+}
+
+@utility blueprint {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--paper) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--paper) 7%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+@utility animate-marquee { animation: marquee 28s linear infinite; }
+
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@utility animate-spin-slow { animation: spin-slow 22s linear infinite; }
+
+@keyframes flicker {
+  0%, 92%, 100% { opacity: 1; }
+  93% { opacity: 0.3; } 95% { opacity: 1; } 96% { opacity: 0.5; }
+}
+@utility animate-flicker { animation: flicker 4s infinite; }
+
+@keyframes scan { from { transform: translateY(-100%); } to { transform: translateY(100vh); } }
+@utility animate-scan { animation: scan 6s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
