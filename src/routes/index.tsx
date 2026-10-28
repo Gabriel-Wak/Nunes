@@ -11,8 +11,16 @@ import {
 } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { STORES, whatsappLink, mapEmbed, type Store } from "@/lib/stores";
-import logo from "@/assets/nunes-logo.png";
-import family from "@/assets/nunes-carlos-naida.jpg";
+import logoSrc from "@/assets/nunes-logo.png";
+const logo = { url: logoSrc };
+import logoLightSrc from "@/assets/nunes-logo-light.png";
+const logoLight = { url: logoLightSrc };
+import fotoForquilhinhasSrc from "@/assets/forquilhinhas-fachada.webp";
+const fotoForquilhinhas = { url: fotoForquilhinhasSrc };
+import fotoSertaoSrc from "@/assets/sertao-fachada.webp";
+const fotoSertao = { url: fotoSertaoSrc };
+import familySrc from "@/assets/nunes-carlos-naida.jpg";
+const family = { url: familySrc };
 import heroEngine from "@/assets/hero-engine.jpg";
 
 const TITLE = "Nunes Autocenter — Mecânica e auto elétrica em São José, SC";
@@ -145,8 +153,8 @@ function Header() {
       }
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
-        <a href="#topo" className={"rounded-sm px-2 py-1 transition-colors " + (solid ? "" : "bg-paper")}>
-          <img src={logo} alt="Nunes Autocenter" width={948} height={390} className="h-9 w-auto" />
+        <a href="#topo" className="py-1">
+          <img src={solid ? logo.url : logoLight.url} alt="Nunes Autocenter" width={948} height={390} className="h-10 w-auto" />
         </a>
         <nav className={"hidden gap-8 text-sm font-semibold md:flex " + (solid ? "text-navy" : "text-paper")}>
           <a href="#servicos" className="hover:text-bolt">Serviços</a>
@@ -402,7 +410,7 @@ function Story() {
     <section id="historia" ref={ref} className="mx-auto grid max-w-7xl gap-16 overflow-hidden px-5 py-28 md:grid-cols-2 md:items-center">
       <motion.figure style={{ y: imgY, rotate: rot }} className="relative">
         <div className="hazard absolute -inset-3 -z-10 translate-x-4 translate-y-4" />
-        <img src={family} alt="Carlos e Naida Nunes no balcão amarelo da Nunes Autocenter" width={800} height={533} loading="lazy" className="w-full object-cover" />
+        <img src={family.url} alt="Carlos e Naida Nunes no balcão amarelo da Nunes Autocenter" width={800} height={533} loading="lazy" className="w-full object-cover" />
         <figcaption className="bg-navy-deep px-4 py-3 text-sm text-paper">Carlos e Naida Nunes, na loja.</figcaption>
       </motion.figure>
       <div>
@@ -460,14 +468,30 @@ function Reviews() {
   );
 }
 
+const STORE_PHOTOS: Record<Store["id"], string> = {
+  forquilhinhas: fotoForquilhinhas.url,
+  sertao: fotoSertao.url,
+};
+
 function StoreCard({ s, i }: { s: Store; i: number }) {
   return (
     <Reveal delay={i * 0.1} className="flex flex-col bg-card">
+      <div className="group relative h-72 overflow-hidden">
+        <img
+          src={STORE_PHOTOS[s.id]}
+          alt={`Fachada da Nunes Autocenter ${s.name}`}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        <span className="absolute left-4 top-4 bg-signal px-3 py-1 font-display text-xs font-extrabold uppercase tracking-wider text-navy-deep">
+          Fachada real
+        </span>
+      </div>
       <iframe
         title={`Mapa da loja Nunes Autocenter ${s.name}`}
         src={mapEmbed(s)}
         loading="lazy"
-        className="h-64 w-full grayscale-[40%]"
+        className="h-48 w-full grayscale-[40%]"
         referrerPolicy="no-referrer-when-downgrade"
       />
       <div className="flex flex-1 flex-col gap-4 p-8">
@@ -539,7 +563,7 @@ function Footer() {
   return (
     <footer className="bg-paper py-12">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-5 text-sm text-muted-foreground">
-        <img src={logo} alt="Nunes Autocenter" width={948} height={390} loading="lazy" className="h-10 w-auto" />
+        <img src={logo.url} alt="Nunes Autocenter" width={948} height={390} loading="lazy" className="h-10 w-auto" />
         <p>Mecânica geral · Auto elétrica · Injeção eletrônica — São José, SC</p>
         <p>Fixo: (48) 3034-2831</p>
       </div>
