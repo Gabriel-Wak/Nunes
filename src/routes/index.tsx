@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { motion } from "motion/react";
+import { useState } from "react";
 import {
-  motion,
-  useScroll,
-  useTransform,
-  useSpring,
-  useMotionValue,
-  useInView,
-  animate,
-  useReducedMotion,
-} from "motion/react";
-import { useEffect, useRef, useState } from "react";
-import { STORES, whatsappLink, mapEmbed, type Store } from "@/lib/stores";
+  STORES,
+  LANDLINE,
+  SITE_URL,
+  absoluteUrl,
+  whatsappLink,
+  mapEmbed,
+  mapsLink,
+  type Store,
+} from "@/lib/stores";
 import logoSrc from "@/assets/nunes-logo.png";
 const logo = { url: logoSrc };
 import logoLightSrc from "@/assets/nunes-logo-light.png";
@@ -21,11 +21,22 @@ import fotoSertaoSrc from "@/assets/sertao-fachada.webp";
 const fotoSertao = { url: fotoSertaoSrc };
 import familySrc from "@/assets/nunes-carlos-naida.jpg";
 const family = { url: familySrc };
-import heroEngine from "@/assets/hero-engine.jpg";
+
+const STORE_PHOTOS: Record<
+  Store["id"],
+  { src: string; width: number; height: number; position: string }
+> = {
+  forquilhinhas: { src: fotoForquilhinhas.url, width: 1707, height: 1280, position: "center 45%" },
+  sertao: { src: fotoSertao.url, width: 1600, height: 1107, position: "center" },
+};
+
+const shortAddress = (s: Store) => s.address.split(" — ")[0];
 
 const TITLE = "Nunes Autocenter — Mecânica e auto elétrica em São José, SC";
 const DESC =
   "Desde 1999 cuidando dos carros de São José. Mecânica, auto elétrica, freios, ar-condicionado e check-up grátis de +30 itens em Forquilhinhas e Sertão do Maruim.";
+
+const OG_IMAGE = absoluteUrl(fotoForquilhinhas.url);
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,7 +50,17 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TITLE },
       { name: "twitter:description", content: DESC },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: "1707" },
+      { property: "og:image:height", content: "1280" },
+      {
+        property: "og:image:alt",
+        content: "Fachada da Nunes Autocenter em Forquilhinhas, São José",
+      },
+      { name: "twitter:image", content: OG_IMAGE },
+      ...(SITE_URL ? [{ property: "og:url", content: SITE_URL + "/" }] : []),
     ],
+    links: SITE_URL ? [{ rel: "canonical", href: SITE_URL + "/" }] : [],
     scripts: [
       {
         type: "application/ld+json",
@@ -49,8 +70,16 @@ export const Route = createFileRoute("/")({
             "@type": "AutoRepair",
             name: `Nunes Autocenter ${s.name}`,
             telephone: `+${s.whatsapp}`,
-            address: { "@type": "PostalAddress", streetAddress: s.address, addressLocality: "São José", addressRegion: "SC", addressCountry: "BR" },
-            aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", bestRating: "5" },
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: s.address,
+              addressLocality: "São José",
+              addressRegion: "SC",
+              addressCountry: "BR",
+            },
+            image: absoluteUrl(STORE_PHOTOS[s.id].src),
+            ...(SITE_URL ? { url: SITE_URL + "/" } : {}),
+            hasMap: mapsLink(s),
             foundingDate: "1999",
           })),
         ),
@@ -62,14 +91,6 @@ export const Route = createFileRoute("/")({
 
 /* ---------- small pieces ---------- */
 
-function Bolt({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
-  return (
-    <svg viewBox="0 0 120 260" className={className} style={style} aria-hidden>
-      <path d="M120 0 L40 120 H82 L22 196 H62 L0 260 L58 170 H18 L76 96 H34 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
 function StoreButtons({ topic, dark = false }: { topic?: string; dark?: boolean }) {
   return (
     <div className="flex flex-wrap gap-3">
@@ -80,20 +101,20 @@ function StoreButtons({ topic, dark = false }: { topic?: string; dark?: boolean 
           target="_blank"
           rel="noopener noreferrer"
           className={
-            "group inline-flex items-center gap-3 rounded-sm px-5 py-4 font-display text-sm font-extrabold uppercase tracking-wider transition-transform hover:-translate-y-0.5 " +
+            "group inline-flex items-center gap-3 rounded-sm px-5 py-4 font-display text-base font-bold uppercase tracking-wide transition-colors " +
             (s.id === "forquilhinhas"
-              ? "bg-signal text-navy-deep shadow-cta"
+              ? "bg-signal text-graphite shadow-cta hover:bg-signal-dark"
               : dark
                 ? "border-2 border-paper/40 text-paper hover:border-signal hover:text-signal"
-                : "border-2 border-navy text-navy hover:bg-navy hover:text-paper")
+                : "border-2 border-graphite text-graphite hover:bg-graphite hover:text-paper")
           }
         >
           <WaIcon />
           <span>
-            <span className="block text-[0.65rem] tracking-[0.25em] opacity-70">WhatsApp</span>
+            <span className="block text-xs tracking-[0.12em] opacity-70">WhatsApp</span>
             Loja {s.name}
           </span>
-          <span className="transition-transform group-hover:translate-x-1">→</span>
+          <span aria-hidden>→</span>
         </a>
       ))}
     </div>
@@ -108,31 +129,14 @@ function WaIcon() {
   );
 }
 
-function Counter({ to, suffix = "", decimals = 0 }: { to: number; suffix?: string; decimals?: number | undefined }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    const c = animate(0, to, { duration: 2, ease: [0.16, 1, 0.3, 1], onUpdate: setV });
-    return () => c.stop();
-  }, [inView, to]);
-  return (
-    <span ref={ref}>
-      {v.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
-      {suffix}
-    </span>
-  );
-}
-
-function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
+function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
     >
       {children}
     </motion.div>
@@ -142,27 +146,36 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
 /* ---------- sections ---------- */
 
 function Header() {
-  const { scrollY } = useScroll();
-  const [solid, setSolid] = useState(false);
-  useEffect(() => scrollY.on("change", (y) => setSolid(y > 60)), [scrollY]);
   return (
-    <header
-      className={
-        "fixed inset-x-0 top-0 z-50 transition-colors duration-300 " +
-        (solid ? "bg-paper/95 shadow-sm backdrop-blur" : "bg-transparent")
-      }
-    >
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-steel bg-graphite">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
         <a href="#topo" className="py-1">
-          <img src={solid ? logo.url : logoLight.url} alt="Nunes Autocenter" width={948} height={390} className="h-10 w-auto" />
+          <img
+            src={logoLight.url}
+            alt="Nunes Autocenter"
+            width={948}
+            height={390}
+            className="h-10 w-auto"
+          />
         </a>
-        <nav className={"hidden gap-8 text-sm font-semibold md:flex " + (solid ? "text-navy" : "text-paper")}>
-          <a href="#servicos" className="hover:text-bolt">Serviços</a>
-          <a href="#historia" className="hover:text-bolt">Nossa história</a>
-          <a href="#avaliacoes" className="hover:text-bolt">Avaliações</a>
-          <a href="#lojas" className="hover:text-bolt">Lojas</a>
+        <nav className="hidden gap-8 text-sm font-semibold text-paper md:flex">
+          <a href="#servicos" className="hover:text-signal">
+            Serviços
+          </a>
+          <a href="#historia" className="hover:text-signal">
+            Nossa história
+          </a>
+          <a href="#avaliacoes" className="hover:text-signal">
+            Avaliações
+          </a>
+          <a href="#lojas" className="hover:text-signal">
+            Lojas
+          </a>
         </nav>
-        <a href="#lojas" className="rounded-sm bg-signal px-4 py-2 font-display text-xs font-extrabold uppercase tracking-wider text-navy-deep">
+        <a
+          href="#lojas"
+          className="rounded-sm bg-signal px-4 py-2 font-display text-sm font-bold uppercase tracking-wide text-graphite hover:bg-signal-dark"
+        >
           Agendar
         </a>
       </div>
@@ -171,130 +184,104 @@ function Header() {
 }
 
 function Hero() {
-  const ref = useRef<HTMLElement>(null);
-  const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-  const bgScale = useTransform(scrollYProgress, [0, 1], [1.08, 1.25]);
-  const textY = useTransform(scrollYProgress, [0, 1], [0, -160]);
-  const boltRotY = useTransform(scrollYProgress, [0, 1], [0, 180]);
-
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const rx = useSpring(useTransform(my, [-0.5, 0.5], [18, -18]), { stiffness: 80, damping: 15 });
-  const ry = useSpring(useTransform(mx, [-0.5, 0.5], [-24, 24]), { stiffness: 80, damping: 15 });
-
   return (
     <section
       id="topo"
-      ref={ref}
-      onMouseMove={(e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        mx.set((e.clientX - r.left) / r.width - 0.5);
-        my.set((e.clientY - r.top) / r.height - 0.5);
-      }}
-      className="relative isolate flex min-h-[100svh] items-end overflow-hidden bg-navy-deep text-paper"
+      className="relative isolate flex min-h-[100svh] items-end overflow-hidden bg-graphite text-paper"
     >
-      <motion.img
-        src={heroEngine}
-        alt="Detalhe de alternador e chicote elétrico iluminado na oficina"
-        width={1920}
-        height={1088}
+      <img
+        src={fotoForquilhinhas.url}
+        alt="Fachada da Nunes Autocenter em Forquilhinhas, São José"
+        width={1707}
+        height={1280}
         fetchPriority="high"
-        style={reduce ? {} : { y: bgY, scale: bgScale }}
-        className="absolute inset-0 -z-20 h-full w-full object-cover opacity-60"
+        className="absolute inset-0 -z-20 h-full w-full object-cover [filter:contrast(1.05)_saturate(0.95)]"
+        style={{ objectPosition: "center 40%" }}
       />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-navy-deep via-navy-deep/70 to-navy-deep/30" />
-      <div className="blueprint absolute inset-0 -z-10 opacity-60" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-gradient-to-b from-signal/10 to-transparent animate-scan" />
+      <div className="absolute inset-0 -z-10 bg-graphite/45" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-graphite/95 via-graphite/50 to-transparent md:bg-gradient-to-r md:from-graphite/90 md:via-graphite/55" />
 
-      {/* rotating gauge ring */}
-      <svg viewBox="0 0 400 400" className="animate-spin-slow pointer-events-none absolute -right-40 top-10 -z-10 size-[44rem] text-paper/10" aria-hidden>
-        <circle cx="200" cy="200" r="190" fill="none" stroke="currentColor" strokeWidth="1" />
-        {Array.from({ length: 60 }).map((_, i) => (
-          <line key={i} x1="200" y1="14" x2="200" y2={i % 5 === 0 ? 40 : 26} stroke="currentColor" strokeWidth={i % 5 === 0 ? 3 : 1} transform={`rotate(${i * 6} 200 200)`} />
-        ))}
-      </svg>
-
-      {/* 3D bolt */}
-      <div className="pointer-events-none absolute right-[6%] top-[14%] -z-10 hidden md:block" style={{ perspective: 900 }}>
-        <motion.div style={{ rotateX: rx, rotateY: reduce ? 0 : ry, transformStyle: "preserve-3d" }}>
-          <motion.div style={{ rotateY: reduce ? 0 : boltRotY, transformStyle: "preserve-3d" }} className="relative h-[26rem] w-48">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <Bolt
-                key={i}
-                className={"absolute inset-0 h-full w-full " + (i === 9 ? "text-bolt animate-flicker drop-shadow-[0_0_40px_var(--bolt)]" : "text-bolt/60")}
-                style={{ transform: `translateZ(${i * 3}px)`, filter: i < 9 ? `brightness(${0.4 + i * 0.05})` : undefined }}
-              />
-            ))}
-          </motion.div>
-        </motion.div>
-      </div>
-
-      <motion.div style={reduce ? {} : { y: textY }} className="mx-auto w-full max-w-7xl px-5 pb-16 pt-32">
-        <motion.p initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="eyebrow mb-6 flex items-center gap-3 text-signal">
-          <span className="inline-block h-px w-10 bg-signal" /> São José · SC · desde 1999
-        </motion.p>
-        <h1 className="display-xl text-[clamp(3rem,10vw,9.5rem)]">
-          {["Seu carro", "nas mãos", "da família"].map((line, i) => (
-            <span key={line} className="block overflow-hidden">
-              <motion.span
-                className={"block " + (i === 2 ? "text-signal" : "")}
-                initial={{ y: "105%" }}
-                animate={{ y: 0 }}
-                transition={{ duration: 1, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {line}
-              </motion.span>
-            </span>
-          ))}
+      <div className="mx-auto w-full max-w-7xl px-5 pb-14 pt-32">
+        <p className="eyebrow mb-5 inline-block bg-signal px-2 py-1 text-graphite">
+          São José · SC · desde 1999
+        </p>
+        <h1 className="display-xl text-[clamp(3.5rem,11vw,9.5rem)]">
+          Seu carro
+          <br />
+          nas mãos
+          <br />
+          <span className="text-signal">da família</span>
         </h1>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }} className="mt-8 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
-          <p className="max-w-xl text-lg text-paper/85 md:text-xl">
-            Começou como a elétrica do Carlos em Forquilhinhas. Hoje são duas lojas, mais de 21 mil carros atendidos — e
-            o <strong className="text-paper">check-up de +30 itens continua grátis</strong>.
+        <div className="mt-8 grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
+          <p className="max-w-xl text-lg text-paper/90 md:text-xl">
+            Começou como a elétrica do Carlos em Forquilhinhas. Hoje são duas lojas, mais de 21 mil
+            carros atendidos — e o{" "}
+            <strong className="text-paper">check-up de +30 itens continua grátis</strong>.
           </p>
           <StoreButtons dark />
-        </motion.div>
-      </motion.div>
+        </div>
+        <a
+          href="#lojas"
+          className="mt-8 flex flex-col gap-1 border-t border-paper/20 pt-4 pr-20 text-sm text-paper/85 hover:text-signal md:flex-row md:gap-6 md:pr-0"
+        >
+          {STORES.map((s) => (
+            <span key={s.id}>
+              <strong className="font-semibold text-paper">{s.name}</strong> —{" "}
+              <span className="whitespace-nowrap">{shortAddress(s)}</span>
+            </span>
+          ))}
+        </a>
+      </div>
     </section>
   );
 }
 
-function Marquee() {
-  const items = ["Mecânica geral", "Auto elétrica", "Injeção eletrônica", "Freios", "Ar-condicionado", "Arrefecimento", "Diagnóstico computadorizado", "Linha pesada"];
+function ServiceStrip() {
+  const items = [
+    "Mecânica",
+    "Elétrica",
+    "Injeção",
+    "Freios",
+    "Ar-condicionado",
+    "Arrefecimento",
+    "Troca de óleo",
+    "Linha pesada",
+  ];
   return (
     <div className="hazard py-1.5">
-      <div className="overflow-hidden bg-navy-deep py-4 text-paper">
-        <div className="animate-marquee flex w-max gap-10 whitespace-nowrap font-display text-2xl font-black uppercase">
-          {[...items, ...items].map((t, i) => (
-            <span key={i} className="flex items-center gap-10">
-              {t} <Bolt className="h-6 w-3 text-signal" />
-            </span>
-          ))}
-        </div>
-      </div>
+      <ul className="flex flex-wrap justify-center gap-2 bg-graphite px-5 py-5">
+        {items.map((t) => (
+          <li
+            key={t}
+            className="bg-signal px-3 py-1.5 font-display text-lg font-bold uppercase leading-none text-graphite md:text-xl"
+          >
+            {t}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 function Numbers() {
   const stats = [
-    { n: 21658, label: "veículos atendidos", s: "" },
-    { n: 25, label: "anos em São José", s: "+" },
-    { n: 4.7, label: "estrelas no Google", s: "★", d: 1 },
-    { n: 2, label: "lojas da família", s: "" },
+    { n: "21.658", label: "veículos atendidos" },
+    { n: "+25", label: "anos em São José" },
+    { n: "4,7 ★", label: "estrelas no Google" },
+    { n: "2", label: "lojas da família" },
   ];
   return (
-    <section className="mx-auto max-w-7xl px-5 py-24">
-      <div className="grid grid-cols-2 gap-y-12 md:grid-cols-4">
-        {stats.map((s, i) => (
-          <Reveal key={s.label} delay={i * 0.08} className="border-l-2 border-navy pl-5">
-            <div className="font-display text-5xl font-black text-navy md:text-6xl" style={{ fontStretch: "125%" }}>
-              <Counter to={s.n} suffix={s.s} decimals={s.d} />
+    <section className="mx-auto max-w-7xl px-5 py-20">
+      <div className="grid grid-cols-2 gap-y-10 md:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="border-l-4 border-signal pl-5">
+            <div className="tabular font-display text-5xl font-bold leading-none text-ink md:text-6xl">
+              {s.n}
             </div>
-            <div className="mt-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">{s.label}</div>
-          </Reveal>
+            <div className="mt-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              {s.label}
+            </div>
+          </div>
         ))}
       </div>
     </section>
@@ -302,16 +289,19 @@ function Numbers() {
 }
 
 function Offer() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const x = useTransform(scrollYProgress, [0, 1], ["10%", "-30%"]);
-  const checks = ["Freios e fluido", "Bateria e alternador", "Suspensão", "Iluminação", "Arrefecimento", "Óleo e filtros", "Pneus e alinhamento", "Palhetas e buzina"];
+  const checks = [
+    "Freios e fluido",
+    "Bateria e alternador",
+    "Suspensão",
+    "Iluminação",
+    "Arrefecimento",
+    "Óleo e filtros",
+    "Pneus e alinhamento",
+    "Palhetas e buzina",
+  ];
   return (
-    <section ref={ref} className="relative overflow-hidden bg-signal py-24 text-navy-deep">
-      <motion.div style={{ x }} className="pointer-events-none absolute -top-6 left-0 whitespace-nowrap font-display text-[16rem] font-black uppercase leading-none text-navy-deep/[0.06]" aria-hidden>
-        check-up grátis check-up grátis
-      </motion.div>
-      <div className="relative mx-auto grid max-w-7xl gap-12 px-5 md:grid-cols-2 md:items-center">
+    <section className="bg-signal py-20 text-graphite">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 md:grid-cols-2 md:items-center">
         <Reveal>
           <p className="eyebrow mb-4 text-bolt">Oferta da casa</p>
           <h2 className="display-xl text-6xl md:text-8xl">
@@ -320,27 +310,34 @@ function Offer() {
             R$ 0.
           </h2>
           <p className="mt-6 max-w-md text-lg">
-            Agende sua revisão e a gente confere o carro de ponta a ponta, sem custo. Você sai sabendo o que precisa agora e o que pode esperar.
+            Agende sua revisão e a gente confere o carro de ponta a ponta, sem custo. Você sai
+            sabendo o que precisa agora e o que pode esperar.
           </p>
           <div className="mt-8">
             <StoreButtons topic="o check-up grátis de +30 itens" />
           </div>
         </Reveal>
-        <ul className="grid grid-cols-2 gap-px bg-navy-deep/20">
+        <ul className="grid grid-cols-1 gap-px border-2 border-graphite bg-graphite sm:grid-cols-2">
           {checks.map((c, i) => (
-            <motion.li
+            <li
               key={c}
-              initial={{ opacity: 0, rotateX: -90 }}
-              whileInView={{ opacity: 1, rotateX: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07, duration: 0.6 }}
-              style={{ transformPerspective: 600 }}
-              className="flex items-center gap-3 bg-signal p-5 font-semibold"
+              className="flex items-center gap-3 bg-paper px-4 py-4 font-semibold text-ink"
             >
-              <span className="font-display text-xs font-black text-bolt">{String(i + 1).padStart(2, "0")}</span> {c}
-            </motion.li>
+              <span className="tabular w-6 font-display text-base font-bold text-bolt">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span
+                className="flex size-5 shrink-0 items-center justify-center border-2 border-graphite text-xs font-bold leading-none"
+                aria-hidden
+              >
+                ✓
+              </span>
+              {c}
+            </li>
           ))}
-          <li className="col-span-2 bg-navy-deep p-5 font-display text-sm font-bold uppercase tracking-widest text-signal">+ 22 itens conferidos na loja</li>
+          <li className="bg-graphite px-4 py-4 font-display text-base font-bold uppercase tracking-wide text-signal sm:col-span-2">
+            + 22 itens conferidos na loja
+          </li>
         </ul>
       </div>
     </section>
@@ -348,9 +345,18 @@ function Offer() {
 }
 
 const SERVICES = [
-  { t: "Mecânica geral e revisão", d: "Troca de óleo e filtros, alinhamento, balanceamento, suspensão, motor." },
-  { t: "Auto elétrica", d: "Onde tudo começou. Bateria, alternador, motor de partida, iluminação — linha leve e pesada." },
-  { t: "Injeção e diagnóstico", d: "Leitura computadorizada das falhas eletrônicas antes de trocar qualquer peça." },
+  {
+    t: "Mecânica geral e revisão",
+    d: "Troca de óleo e filtros, alinhamento, balanceamento, suspensão, motor.",
+  },
+  {
+    t: "Auto elétrica",
+    d: "Onde tudo começou. Bateria, alternador, motor de partida, iluminação — linha leve e pesada.",
+  },
+  {
+    t: "Injeção e diagnóstico",
+    d: "Leitura computadorizada das falhas eletrônicas antes de trocar qualquer peça.",
+  },
   { t: "Freios", d: "Manutenção, limpeza do sistema e troca de fluido." },
   { t: "Ar-condicionado", d: "Diagnóstico, recarga de gás e higienização." },
   { t: "Arrefecimento", d: "Limpeza, reparo do sistema e troca de fluidos." },
@@ -358,36 +364,44 @@ const SERVICES = [
 ];
 
 function Services() {
-  const [hover, setHover] = useState<number | null>(null);
   return (
-    <section id="servicos" className="bg-navy-deep py-28 text-paper">
+    <section id="servicos" className="bg-graphite py-24 text-paper">
       <div className="mx-auto max-w-7xl px-5">
-        <div className="mb-16 flex flex-wrap items-end justify-between gap-6">
+        <div className="mb-14 flex flex-wrap items-end justify-between gap-6">
           <Reveal>
             <p className="eyebrow mb-4 text-signal">O que a gente faz</p>
-            <h2 className="display-xl text-5xl md:text-7xl">Da bateria<br />ao motor.</h2>
+            <h2 className="display-xl text-5xl md:text-7xl">
+              Da bateria
+              <br />
+              ao motor.
+            </h2>
           </Reveal>
-          <p className="max-w-sm text-paper/75">Mecânica geral, auto elétrica e injeção eletrônica no mesmo lugar. Você não precisa levar o carro em três oficinas.</p>
+          <p className="max-w-sm text-paper/75">
+            Mecânica geral, auto elétrica e injeção eletrônica no mesmo lugar. Você não precisa
+            levar o carro em três oficinas.
+          </p>
         </div>
-        <ul className="border-t border-paper/15" onMouseLeave={() => setHover(null)}>
+        <ul className="border-t border-steel">
           {SERVICES.map((s, i) => (
-            <motion.li
-              key={s.t}
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ delay: i * 0.05 }}
-              onMouseEnter={() => setHover(i)}
-              className="group relative border-b border-paper/15"
-            >
-              <a href={whatsappLink(STORES[0]!, s.t.toLowerCase())} target="_blank" rel="noopener noreferrer" className="relative z-10 grid gap-2 py-7 md:grid-cols-[5rem_1fr_1.2fr_auto] md:items-center">
-                <span className="font-display text-sm font-bold text-signal">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className={"font-display text-2xl font-extrabold uppercase transition-transform duration-300 group-hover:translate-x-3 md:text-4xl " + (hover === i ? "text-navy-deep" : "")}>{s.t}</h3>
-                <p className={"text-paper/70 transition-colors " + (hover === i ? "text-navy-deep" : "")}>{s.d}</p>
-                <span className={"hidden font-display text-xs font-bold uppercase tracking-widest md:block " + (hover === i ? "text-navy-deep" : "text-paper/40")}>Orçar →</span>
+            <li key={s.t} className="group border-b border-steel transition-colors hover:bg-signal">
+              <a
+                href={whatsappLink(STORES[0]!, s.t.toLowerCase())}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="grid gap-2 px-2 py-6 md:grid-cols-[5rem_1fr_1.2fr_auto] md:items-center md:px-4"
+              >
+                <span className="tabular font-display text-base font-bold text-signal group-hover:text-bolt">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <h3 className="font-display text-3xl font-bold group-hover:text-graphite md:text-4xl">
+                  {s.t}
+                </h3>
+                <p className="text-paper/70 group-hover:text-graphite">{s.d}</p>
+                <span className="hidden font-display text-sm font-bold uppercase tracking-wide text-steel-mid group-hover:text-graphite md:block">
+                  Orçar →
+                </span>
               </a>
-              {hover === i && <motion.div layoutId="svc-hl" className="absolute inset-0 bg-signal" transition={{ type: "spring", stiffness: 300, damping: 30 }} />}
-            </motion.li>
+            </li>
           ))}
         </ul>
       </div>
@@ -396,97 +410,144 @@ function Services() {
 }
 
 function Story() {
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const imgY = useTransform(scrollYProgress, [0, 1], [80, -80]);
-  const rot = useTransform(scrollYProgress, [0, 1], [-4, 3]);
-  const lineH = useTransform(scrollYProgress, [0.15, 0.7], ["0%", "100%"]);
   const timeline = [
     { y: "1999", t: "Carlos Nunes abre a Eletro Nunes, uma elétrica em Forquilhinhas." },
-    { y: "Depois", t: "A elétrica vira centro automotivo completo: mecânica, injeção, freios, ar." },
-    { y: "Hoje", t: "Duas lojas em São José. A do Sertão do Maruim é tocada pela Naida, esposa do Carlos." },
+    {
+      y: "Com o tempo",
+      t: "A elétrica vira centro automotivo completo: mecânica, injeção, freios, ar.",
+    },
+    {
+      y: "Hoje",
+      t: "Duas lojas em São José. A do Sertão do Maruim é tocada pela Naida, esposa do Carlos.",
+    },
   ];
   return (
-    <section id="historia" ref={ref} className="mx-auto grid max-w-7xl gap-16 overflow-hidden px-5 py-28 md:grid-cols-2 md:items-center">
-      <motion.figure style={{ y: imgY, rotate: rot }} className="relative">
-        <div className="hazard absolute -inset-3 -z-10 translate-x-4 translate-y-4" />
-        <img src={family.url} alt="Carlos e Naida Nunes no balcão amarelo da Nunes Autocenter" width={800} height={533} loading="lazy" className="w-full object-cover" />
-        <figcaption className="bg-navy-deep px-4 py-3 text-sm text-paper">Carlos e Naida Nunes, na loja.</figcaption>
-      </motion.figure>
+    <section
+      id="historia"
+      className="mx-auto grid max-w-7xl gap-14 px-5 py-24 md:grid-cols-2 md:items-center"
+    >
+      <figure>
+        <img
+          src={family.url}
+          alt="Carlos e Naida Nunes no balcão amarelo da Nunes Autocenter"
+          width={800}
+          height={533}
+          loading="lazy"
+          className="h-auto w-full object-cover"
+        />
+        <figcaption className="mt-2 text-sm text-muted-foreground">
+          Carlos e Naida Nunes, na loja.
+        </figcaption>
+      </figure>
       <div>
         <Reveal>
           <p className="eyebrow mb-4 text-bolt">Nossa história</p>
-          <h2 className="display-xl text-5xl text-navy md:text-7xl">Começou<br />com um fio.</h2>
+          <h2 className="display-xl text-5xl text-ink md:text-7xl">
+            Começou
+            <br />
+            com um fio.
+          </h2>
         </Reveal>
         <div className="relative mt-10 pl-8">
-          <div className="absolute left-0 top-0 h-full w-0.5 bg-border" />
-          <motion.div style={{ height: lineH }} className="absolute left-0 top-0 w-0.5 bg-bolt" />
-          {timeline.map((e, i) => (
-            <Reveal key={e.y} delay={i * 0.1} className="relative mb-10 last:mb-0">
-              <span className="absolute -left-[2.35rem] top-1 size-3 rotate-45 bg-signal ring-4 ring-paper" />
-              <div className="font-display text-3xl font-black text-navy">{e.y}</div>
-              <p className="mt-1 max-w-md text-muted-foreground">{e.t}</p>
-            </Reveal>
+          <div className="absolute left-0 top-0 h-full w-0.5 bg-bolt" />
+          {timeline.map((e) => (
+            <div key={e.y} className="relative mb-10 last:mb-0">
+              <span className="absolute -left-[2.35rem] top-1.5 size-3 bg-signal ring-4 ring-paper" />
+              <div className="font-display text-3xl font-bold uppercase leading-none text-ink">
+                {e.y}
+              </div>
+              <p className="mt-2 max-w-md text-muted-foreground">{e.t}</p>
+            </div>
           ))}
         </div>
-        <p className="mt-10 font-display text-lg font-bold italic text-navy">"Tudo é possível ao que crê!"</p>
+        <p className="mt-10 font-display text-xl font-bold italic text-ink">
+          "Tudo é possível ao que crê!"
+        </p>
       </div>
     </section>
   );
 }
 
 const REVIEWS = [
-  { n: "Simone Santos Silva", t: "A melhor oficina da região de São José, com um ótimo atendimento do Pedro e do Thiago, que são muito atenciosos e prestativos. Sem palavras!" },
-  { n: "Francesco Claro Berben", t: "Recomendo, sempre me atendem bem, com atendimento honesto e valor justo." },
-  { n: "João Vitor Santos", t: "Atendimento de qualidade, recomendo bastante pela eficiência e rapidez nos serviços." },
+  {
+    n: "Simone Santos Silva",
+    t: "A melhor oficina da região de São José, com um ótimo atendimento do Pedro e do Thiago, que são muito atenciosos e prestativos. Sem palavras!",
+  },
+  {
+    n: "Francesco Claro Berben",
+    t: "Recomendo, sempre me atendem bem, com atendimento honesto e valor justo.",
+  },
+  {
+    n: "João Vitor Santos",
+    t: "Atendimento de qualidade, recomendo bastante pela eficiência e rapidez nos serviços.",
+  },
   { n: "Jadson Patrick", t: "Ótima oficina! Mecânicos diferenciados e atendimento excepcional." },
 ];
 
 function Reviews() {
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const x = useTransform(scrollYProgress, [0, 1], ["5%", "-35%"]);
   return (
-    <section id="avaliacoes" ref={ref} className="overflow-hidden border-y border-border bg-secondary py-28">
-      <div className="mx-auto mb-14 flex max-w-7xl flex-wrap items-end justify-between gap-6 px-5">
-        <Reveal>
-          <p className="eyebrow mb-4 text-bolt">Avaliações do Google</p>
-          <h2 className="display-xl text-5xl text-navy md:text-7xl">4,7 de 5.</h2>
-        </Reveal>
-        <p className="max-w-xs text-muted-foreground">O que mais aparece nas avaliações: honestidade no preço e gente que explica o que está fazendo.</p>
+    <section id="avaliacoes" className="border-y border-border bg-secondary py-24">
+      <div className="mx-auto max-w-7xl px-5">
+        <div className="mb-12 flex flex-wrap items-end justify-between gap-6">
+          <Reveal>
+            <p className="eyebrow mb-4 text-bolt">Avaliações do Google</p>
+            <h2 className="display-xl text-5xl text-ink md:text-7xl">4,7 de 5.</h2>
+          </Reveal>
+          <p className="max-w-xs text-muted-foreground">
+            O que mais aparece nas avaliações: honestidade no preço e gente que explica o que está
+            fazendo.
+          </p>
+        </div>
+        <div className="grid gap-px border border-border bg-border md:grid-cols-2">
+          {REVIEWS.map((r) => (
+            <blockquote key={r.n} className="bg-card p-7 text-card-foreground">
+              <div className="mb-3 text-bolt" aria-label="5 estrelas">
+                ★★★★★
+              </div>
+              <p className="text-lg leading-relaxed">“{r.t}”</p>
+              <footer className="mt-5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                {r.n} · Google
+              </footer>
+            </blockquote>
+          ))}
+        </div>
+        <p className="mt-8 flex flex-wrap gap-x-6 gap-y-2 font-semibold text-ink">
+          <span>Ver todas as avaliações no Google:</span>
+          {STORES.map((s) => (
+            <a
+              key={s.id}
+              href={mapsLink(s)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-signal decoration-2 underline-offset-4 hover:text-bolt"
+            >
+              Loja {s.name} →
+            </a>
+          ))}
+        </p>
       </div>
-      <motion.div style={{ x }} className="flex w-max gap-6 px-5">
-        {REVIEWS.map((r, i) => (
-          <blockquote key={r.n} className={"w-[22rem] shrink-0 p-8 md:w-[28rem] " + (i % 2 ? "bg-navy text-paper" : "bg-card text-card-foreground")}>
-            <div className="mb-4 text-signal" aria-label="5 estrelas">★★★★★</div>
-            <p className="font-display text-xl font-semibold leading-snug">“{r.t}”</p>
-            <footer className="mt-6 text-sm font-semibold uppercase tracking-widest opacity-70">{r.n} · Google</footer>
-          </blockquote>
-        ))}
-      </motion.div>
     </section>
   );
 }
 
-const STORE_PHOTOS: Record<Store["id"], string> = {
-  forquilhinhas: fotoForquilhinhas.url,
-  sertao: fotoSertao.url,
-};
-
 function StoreCard({ s, i }: { s: Store; i: number }) {
+  const photo = STORE_PHOTOS[s.id];
   return (
-    <Reveal delay={i * 0.1} className="flex flex-col bg-card">
-      <div className="group relative h-72 overflow-hidden">
+    <Reveal className="flex flex-col bg-card">
+      <figure>
         <img
-          src={STORE_PHOTOS[s.id]}
+          src={photo.src}
           alt={`Fachada da Nunes Autocenter ${s.name}`}
+          width={photo.width}
+          height={photo.height}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          className="h-72 w-full object-cover"
+          style={{ objectPosition: photo.position }}
         />
-        <span className="absolute left-4 top-4 bg-signal px-3 py-1 font-display text-xs font-extrabold uppercase tracking-wider text-navy-deep">
-          Fachada real
-        </span>
-      </div>
+        <figcaption className="bg-steel px-4 py-2 text-sm text-paper/80">
+          {shortAddress(s)}
+        </figcaption>
+      </figure>
       <iframe
         title={`Mapa da loja Nunes Autocenter ${s.name}`}
         src={mapEmbed(s)}
@@ -494,16 +555,21 @@ function StoreCard({ s, i }: { s: Store; i: number }) {
         className="h-48 w-full grayscale-[40%]"
         referrerPolicy="no-referrer-when-downgrade"
       />
-      <div className="flex flex-1 flex-col gap-4 p-8">
+      <div className="flex flex-1 flex-col gap-4 p-7">
         <p className="eyebrow text-bolt">Loja {String(i + 1).padStart(2, "0")}</p>
-        <h3 className="font-display text-3xl font-black uppercase text-navy">{s.name}</h3>
+        <h3 className="font-display text-4xl font-bold text-ink">{s.name}</h3>
         <p className="text-muted-foreground">{s.address}</p>
-        <a href={`tel:+${s.whatsapp}`} className="font-display text-xl font-bold text-navy hover:text-bolt">{s.phone}</a>
+        <a
+          href={`tel:+${s.whatsapp}`}
+          className="tabular font-display text-2xl font-bold text-navy hover:text-bolt"
+        >
+          {s.phone}
+        </a>
         <a
           href={whatsappLink(s)}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-auto inline-flex items-center justify-center gap-3 rounded-sm bg-signal px-5 py-4 font-display text-sm font-extrabold uppercase tracking-wider text-navy-deep shadow-cta transition-transform hover:-translate-y-0.5"
+          className="mt-auto inline-flex items-center justify-center gap-3 rounded-sm bg-signal py-4 pl-5 pr-16 sm:px-5 font-display text-base font-bold uppercase tracking-wide text-graphite shadow-cta transition-colors hover:bg-signal-dark"
         >
           <WaIcon /> Chamar a loja {s.name}
         </a>
@@ -514,15 +580,19 @@ function StoreCard({ s, i }: { s: Store; i: number }) {
 
 function Stores() {
   return (
-    <section id="lojas" className="bg-navy-deep py-28">
+    <section id="lojas" className="bg-graphite pb-28 pt-24 md:pb-24">
       <div className="mx-auto max-w-7xl px-5">
-        <Reveal className="mb-14 text-paper">
+        <Reveal className="mb-12 text-paper">
           <p className="eyebrow mb-4 text-signal">Duas lojas em São José</p>
           <h2 className="display-xl text-5xl md:text-7xl">Escolha a mais perto.</h2>
-          <p className="mt-4 max-w-lg text-paper/75">A mensagem já vai pronta pedindo o check-up grátis. É só apertar enviar.</p>
+          <p className="mt-4 max-w-lg text-paper/75">
+            A mensagem já vai pronta pedindo o check-up grátis. É só apertar enviar.
+          </p>
         </Reveal>
         <div className="grid gap-6 md:grid-cols-2">
-          {STORES.map((s, i) => <StoreCard key={s.id} s={s} i={i} />)}
+          {STORES.map((s, i) => (
+            <StoreCard key={s.id} s={s} i={i} />
+          ))}
         </div>
       </div>
     </section>
@@ -532,28 +602,28 @@ function Stores() {
 function FloatingWa() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
       {open &&
-        STORES.map((s, i) => (
-          <motion.a
+        STORES.map((s) => (
+          <a
             key={s.id}
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: i * 0.05 }}
             href={whatsappLink(s)}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-sm bg-navy-deep px-4 py-3 text-sm font-semibold text-paper shadow-lg hover:bg-navy"
+            className="rounded-sm border border-steel-mid bg-graphite px-4 py-3 text-sm font-semibold text-paper hover:bg-steel"
           >
             Loja {s.name}
-          </motion.a>
+          </a>
         ))}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Falar no WhatsApp"
-        className="flex size-16 items-center justify-center rounded-full bg-signal text-navy-deep shadow-cta transition-transform hover:scale-105"
+        aria-expanded={open}
+        className="flex size-14 items-center justify-center rounded-full bg-signal text-graphite shadow-cta transition-colors hover:bg-signal-dark"
       >
-        <span className="[&>svg]:size-8"><WaIcon /></span>
+        <span className="[&>svg]:size-7">
+          <WaIcon />
+        </span>
       </button>
     </div>
   );
@@ -561,29 +631,50 @@ function FloatingWa() {
 
 function Footer() {
   return (
-    <footer className="bg-paper py-12">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-5 text-sm text-muted-foreground">
-        <img src={logo.url} alt="Nunes Autocenter" width={948} height={390} loading="lazy" className="h-10 w-auto" />
-        <p>Mecânica geral · Auto elétrica · Injeção eletrônica — São José, SC</p>
-        <p>Fixo: (48) 3034-2831</p>
+    <footer className="border-t-4 border-signal bg-graphite pb-24 pt-14 text-sm text-paper/75">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 md:grid-cols-[1fr_1fr_1fr]">
+        <div>
+          <img
+            src={logoLight.url}
+            alt="Nunes Autocenter"
+            width={948}
+            height={390}
+            loading="lazy"
+            className="h-10 w-auto"
+          />
+          <p className="mt-4">Mecânica geral · Auto elétrica · Injeção eletrônica — São José, SC</p>
+          <p className="mt-2">
+            Fixo:{" "}
+            <a href={`tel:${LANDLINE.tel}`} className="tabular hover:text-signal">
+              {LANDLINE.phone}
+            </a>
+          </p>
+        </div>
+        {STORES.map((s) => (
+          <div key={s.id}>
+            <p className="font-display text-xl font-bold uppercase text-paper">Loja {s.name}</p>
+            <p className="mt-2">{s.address}</p>
+            <a
+              href={whatsappLink(s)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tabular mt-2 inline-flex items-center gap-2 font-display text-lg font-bold text-signal hover:text-paper"
+            >
+              <WaIcon /> {s.phone}
+            </a>
+          </div>
+        ))}
       </div>
     </footer>
   );
 }
 
-function ScrollBar() {
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
-  return <motion.div style={{ scaleX }} className="fixed inset-x-0 top-0 z-[60] h-1 origin-left bg-bolt" />;
-}
-
 function Index() {
   return (
     <main className="bg-background">
-      <ScrollBar />
       <Header />
       <Hero />
-      <Marquee />
+      <ServiceStrip />
       <Numbers />
       <Offer />
       <Services />

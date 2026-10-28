@@ -36,3 +36,21 @@ export function whatsappLink(store: Store, topic?: string) {
 export function mapEmbed(store: Store) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(store.mapQuery)}&t=m&z=16&output=embed`;
 }
+
+export function mapsLink(store: Store) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.mapQuery)}`;
+}
+
+// TODO(dono): confirmar o fixo — a fachada de Forquilhinhas mostra 3357-2834.
+export const LANDLINE = { phone: "(48) 3034-2831", tel: "+554830342831" };
+
+// Domínio público do site (ex.: https://nunesautocenter.com.br). Sem ele, canonical/og:url ficam de fora
+// e as imagens de compartilhamento usam caminho relativo.
+export const SITE_URL = ((import.meta.env["VITE_SITE_URL"] as string | undefined) ?? "").replace(
+  /\/$/,
+  "",
+);
+
+export function absoluteUrl(path: string) {
+  return SITE_URL ? new URL(path, SITE_URL + "/").toString() : path;
+}
